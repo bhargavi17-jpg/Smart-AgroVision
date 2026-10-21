@@ -47,7 +47,6 @@ if (cropInput) {
     }
   });
 }
-    // Fetch weather data and estimate soil moisture & condition
 // Fetch weather data, predict soil moisture & calculate irrigation recommendation
 async function refreshSensorData() {
   const moistureVal = document.getElementById('moistureVal');
@@ -128,6 +127,7 @@ async function refreshSensorData() {
     }
   }
 }
+
 
 
     function runPartDiagnostics() {
