@@ -241,7 +241,676 @@
                 reader.readAsDataURL(file);
             }
         });
+        ```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart AgroVision - Farmer's Diagnostic & Telemetry Suite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            agro: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              200: '#bbf7d0',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Scanner beam animation */
+    @keyframes scanBeam {
+      0% { top: 0%; opacity: 0.8; }
+      50% { top: 96%; opacity: 1; }
+      100% { top: 0%; opacity: 0.8; }
+    }
+    .scanner-active::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, rgba(34,197,94,0) 0%, rgba(34,197,94,1) 50%, rgba(34,197,94,0) 100%);
+      box-shadow: 0 0 15px 3px rgba(34,197,94,0.8);
+      animation: scanBeam 1.8s infinite ease-in-out;
+      z-index: 20;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col items-center pb-12 selection:bg-agro-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="w-full bg-gradient-to-r from-agro-900 via-agro-800 to-agro-700 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-xl mx-auto px-4 py-4 flex flex-col items-center justify-center text-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa-solid fa-leaf text-agro-300 text-2xl"></i>
+        <h1 class="text-2xl font-bold tracking-tight">Smart AgroVision</h1>
+      </div>
+      <div class="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-agro-500/20 text-agro-200 border border-agro-400/30 backdrop-blur-sm">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        Offline Mode Active &bull; Zero Server Dependency
+      </div>
+    </div>
+  </header>
+
+  <main class="w-full max-w-xl px-4 mt-6 flex flex-col gap-6">
+
+    <!-- Leaf Health Diagnosis Card -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 overflow-hidden transition-all duration-300 hover:shadow-md">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-microscope text-agro-600"></i>
+            Crop Health Diagnosis
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Instant in-browser leaf tissue & lesion computer vision</p>
+        </div>
+        <span class="text-[11px] bg-agro-100 text-agro-800 px-2 py-0.5 rounded-md font-medium">CV Core v2.4</span>
+      </div>
+
+      <!-- File Drop / Select Area -->
+      <div id="dropZone" class="relative group border-2 border-dashed border-slate-300 hover:border-agro-500 rounded-xl p-5 text-center bg-slate-50 hover:bg-agro-50/40 transition-colors cursor-pointer">
+        <input type="file" id="leafInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
         
+        <div id="emptyUploadPrompt" class="flex flex-col items-center justify-center space-y-2 py-3">
+          <div class="w-12 h-12 rounded-full bg-agro-100 text-agro-700 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-camera text-xl"></i>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-slate-700">Tap to select or capture leaf image</p>
+            <p class="text-xs text-slate-400 mt-0.5">Supports PNG, JPG, WebP from camera or gallery</p>
+          </div>
+        </div>
+
+        <div id="fileSelectedBadge" class="hidden items-center justify-center gap-2 text-xs font-semibold text-agro-700 bg-agro-100 py-1.5 px-3 rounded-lg w-fit mx-auto mt-2">
+          <i class="fa-solid fa-check-circle"></i>
+          <span id="fileNameDisplay">image.png</span>
+        </div>
+      </div>
+
+      <!-- Image Preview & Scan Box -->
+      <div id="previewContainer" class="hidden relative mt-4 rounded-xl overflow-hidden border border-slate-200 bg-black aspect-video max-h-64 flex items-center justify-center">
+        <img id="previewImage" src="" alt="Captured leaf" class="w-full h-full object-contain">
+        <div id="scanOverlay" class="absolute inset-0 pointer-events-none hidden scanner-active"></div>
+      </div>
+
+      <!-- Action Button -->
+      <button id="diagnoseBtn" disabled class="mt-4 w-full py-3.5 px-4 bg-agro-600 hover:bg-agro-700 active:bg-agro-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-md shadow-agro-600/20 flex items-center justify-center gap-2 transition-all duration-200">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>Run Diagnostics</span>
+      </button>
+
+      <!-- Invisible Canvas for Pixel Analysis -->
+      <canvas id="cvCanvas" class="hidden"></canvas>
+
+      <!-- Diagnostic Results Box -->
+      <div id="resultsCard" class="hidden mt-5 pt-4 border-t border-slate-100 transition-all">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span id="statusIndicatorDot" class="w-3 h-3 rounded-full bg-emerald-500"></span>
+              <h3 id="resDiseaseName" class="text-base font-bold text-slate-900 leading-snug">Healthy Leaf</h3>
+            </div>
+            <p id="resScientificName" class="text-xs text-slate-500 italic mt-0.5">Normal Physiological State</p>
+          </div>
+          <div class="flex flex-col items-end">
+            <span id="resConfidence" class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">96% Confidence</span>
+            <span id="resSeverity" class="text-[10px] font-semibold uppercase mt-1 px-2 py-0.5 rounded bg-slate-100 text-slate-600">None</span>
+          </div>
+        </div>
+
+        <!-- Metrics Bars -->
+        <div class="mt-4 grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+          <div>
+            <div class="flex justify-between text-xs font-medium text-slate-600 mb-1">
+              <span>Healthy Tissue</span>
+              <span id="metricGreenPct" class="font-bold text-agro-700">88%</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-2">
+              <div id="metricGreenBar" class="bg-agro-600 h-2 rounded-full" style="width: 88%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs font-medium text-slate-600 mb-1">
+              <span>Lesion / Spot Area</span>
+              <span id="metricLesionPct" class="font-bold text-amber-700">12%</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-2">
+              <div id="metricLesionBar" class="bg-amber-500 h-2 rounded-full" style="width: 12%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Symptoms & Recommended Action -->
+        <div class="mt-4 space-y-3">
+          <div class="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3">
+            <h4 class="text-xs font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wider">
+              <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Identified Symptoms
+            </h4>
+            <p id="resSymptoms" class="text-xs text-amber-800 mt-1 leading-relaxed">
+              No necrotic spots, chlorotic halo, or fungal pustules observed.
+            </p>
+          </div>
+
+          <div class="bg-agro-50/80 border border-agro-200/80 rounded-xl p-3">
+            <h4 class="text-xs font-bold text-agro-900 flex items-center gap-1.5 uppercase tracking-wider">
+              <i class="fa-solid fa-prescription-bottle-medical text-agro-700"></i> Treatment & Agronomic Advice
+            </h4>
+            <ul id="resTreatments" class="mt-1.5 space-y-1 text-xs text-agro-950 list-disc list-inside leading-relaxed">
+              <li>Continue regular fertilization schedule.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Smart Soil Moisture Detection -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 transition-all hover:shadow-md">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-droplet text-blue-500"></i>
+            Smart Soil Moisture Detection
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Live IoT Sensor Telemetry & Probes</p>
+        </div>
+        <button id="refreshMoistureBtn" class="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 flex items-center gap-1 active:scale-95 transition-all">
+          <i class="fa-solid fa-arrows-rotate"></i> Sync
+        </button>
+      </div>
+
+      <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 my-2">
+        <div class="space-y-1">
+          <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Root Zone Level</span>
+          <div class="flex items-baseline gap-1">
+            <span id="moistureValueText" class="text-3xl font-extrabold text-slate-800">42%</span>
+            <span class="text-xs text-slate-400">VWC</span>
+          </div>
+          <p id="moistureStatusBadge" class="text-xs font-semibold text-emerald-600 flex items-center gap-1">
+            <i class="fa-solid fa-circle-check"></i> Optimal Moisture Range
+          </p>
+        </div>
+        <div class="w-20 h-20 relative flex items-center justify-center">
+          <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+            <path class="text-slate-200" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path id="moistureRing" class="text-blue-500 transition-all duration-700 ease-out" stroke-dasharray="42, 100" stroke-width="3.5" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <i class="fa-solid fa-water absolute text-blue-500 text-lg"></i>
+        </div>
+      </div>
+
+      <input id="moistureSlider" type="range" min="10" max="95" value="42" class="w-full accent-blue-600 cursor-pointer mt-2">
+      <div class="flex justify-between text-[11px] font-medium text-slate-400 mt-1">
+        <span>Wilting Point (15%)</span>
+        <span>Simulate Probe Reading</span>
+        <span>Saturation (85%)</span>
+      </div>
+    </section>
+
+    <!-- Live Mandi Rates -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 transition-all hover:shadow-md">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-emerald-600"></i>
+            Live Mandi Rates
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Agricultural Produce Market Committee (APMC)</p>
+        </div>
+        <span class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">Today</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3" id="mandiContainer">
+        <!-- Chilli -->
+        <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/60">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">Teja Chilli</span>
+            <span class="text-[10px] text-emerald-600 font-semibold bg-emerald-100 px-1.5 py-0.5 rounded">+2.4%</span>
+          </div>
+          <div class="mt-2 text-base font-black text-slate-900">₹22,300 <span class="text-[10px] font-normal text-slate-500">/ qtl</span></div>
+          <span class="text-[10px] text-slate-400">Guntur Mandi</span>
+        </div>
+        <!-- Cotton -->
+        <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/60">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">Cotton (Medium)</span>
+            <span class="text-[10px] text-rose-600 font-semibold bg-rose-100 px-1.5 py-0.5 rounded">-0.8%</span>
+          </div>
+          <div class="mt-2 text-base font-black text-slate-900">₹7,450 <span class="text-[10px] font-normal text-slate-500">/ qtl</span></div>
+          <span class="text-[10px] text-slate-400">Warangal Mandi</span>
+        </div>
+        <!-- Paddy -->
+        <```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart AgroVision - Farmer's Diagnostic & Telemetry Suite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            agro: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              200: '#bbf7d0',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Scanner beam animation */
+    @keyframes scanBeam {
+      0% { top: 0%; opacity: 0.8; }
+      50% { top: 96%; opacity: 1; }
+      100% { top: 0%; opacity: 0.8; }
+    }
+    .scanner-active::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, rgba(34,197,94,0) 0%, rgba(34,197,94,1) 50%, rgba(34,197,94,0) 100%);
+      box-shadow: 0 0 15px 3px rgba(34,197,94,0.8);
+      animation: scanBeam 1.8s infinite ease-in-out;
+      z-index: 20;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col items-center pb-12 selection:bg-agro-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="w-full bg-gradient-to-r from-agro-900 via-agro-800 to-agro-700 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-xl mx-auto px-4 py-4 flex flex-col items-center justify-center text-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa-solid fa-leaf text-agro-300 text-2xl"></i>
+        <h1 class="text-2xl font-bold tracking-tight">Smart AgroVision</h1>
+      </div>
+      <div class="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-agro-500/20 text-agro-200 border border-agro-400/30 backdrop-blur-sm">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        Offline Mode Active &bull; Zero Server Dependency
+      </div>
+    </div>
+  </header>
+
+  <main class="w-full max-w-xl px-4 mt-6 flex flex-col gap-6">
+
+    <!-- Leaf Health Diagnosis Card -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 overflow-hidden transition-all duration-300 hover:shadow-md">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-microscope text-agro-600"></i>
+            Crop Health Diagnosis
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Instant in-browser leaf tissue & lesion computer vision</p>
+        </div>
+        <span class="text-[11px] bg-agro-100 text-agro-800 px-2 py-0.5 rounded-md font-medium">CV Core v2.4</span>
+      </div>
+
+      <!-- File Drop / Select Area -->
+      <div id="dropZone" class="relative group border-2 border-dashed border-slate-300 hover:border-agro-500 rounded-xl p-5 text-center bg-slate-50 hover:bg-agro-50/40 transition-colors cursor-pointer">
+        <input type="file" id="leafInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+        
+        <div id="emptyUploadPrompt" class="flex flex-col items-center justify-center space-y-2 py-3">
+          <div class="w-12 h-12 rounded-full bg-agro-100 text-agro-700 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-camera text-xl"></i>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-slate-700">Tap to select or capture leaf image</p>
+            <p class="text-xs text-slate-400 mt-0.5">Supports PNG, JPG, WebP from camera or gallery</p>
+          </div>
+        </div>
+
+        <div id="fileSelectedBadge" class="hidden items-center justify-center gap-2 text-xs font-semibold text-agro-700 bg-agro-100 py-1.5 px-3 rounded-lg w-fit mx-auto mt-2">
+          <i class="fa-solid fa-check-circle"></i>
+          <span id="fileNameDisplay">image.png</span>
+        </div>
+      </div>
+
+      <!-- Image Preview & Scan Box -->
+      <div id="previewContainer" class="hidden relative mt-4 rounded-xl overflow-hidden border border-slate-200 bg-black aspect-video max-h-64 flex items-center justify-center">
+        <img id="previewImage" src="" alt="Captured leaf" class="w-full h-full object-contain">
+        <div id="scanOverlay" class="absolute inset-0 pointer-events-none hidden scanner-active"></div>
+      </div>
+
+      <!-- Action Button -->
+      <button id="diagnoseBtn" disabled class="mt-4 w-full py-3.5 px-4 bg-agro-600 hover:bg-agro-700 active:bg-agro-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-md shadow-agro-600/20 flex items-center justify-center gap-2 transition-all duration-200">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>Run Diagnostics</span>
+      </button>
+
+      <!-- Invisible Canvas for Pixel Analysis -->
+      <canvas id="cvCanvas" class="hidden"></canvas>
+
+      <!-- Diagnostic Results Box -->
+      <div id="resultsCard" class="hidden mt-5 pt-4 border-t border-slate-100 transition-all">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span id="statusIndicatorDot" class="w-3 h-3 rounded-full bg-emerald-500"></span>
+              <h3 id="resDiseaseName" class="text-base font-bold text-slate-900 leading-snug">Healthy Leaf</h3>
+            </div>
+            <p id="resScientificName" class="text-xs text-slate-500 italic mt-0.5">Normal Physiological State</p>
+          </div>
+          <div class="flex flex-col items-end">
+            <span id="resConfidence" class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">96% Confidence</span>
+            <span id="resSeverity" class="text-[10px] font-semibold uppercase mt-1 px-2 py-0.5 rounded bg-slate-100 text-slate-600">None</span>
+          </div>
+        </div>
+
+        <!-- Metrics Bars -->
+        <div class="mt-4 grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+          <div>
+            <div class="flex justify-between text-xs font-medium text-slate-600 mb-1">
+              <span>Healthy Tissue</span>
+              <span id="metricGreenPct" class="font-bold text-agro-700">88%</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-2">
+              <div id="metricGreenBar" class="bg-agro-600 h-2 rounded-full" style="width: 88%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs font-medium text-slate-600 mb-1">
+              <span>Lesion / Spot Area</span>
+              <span id="metricLesionPct" class="font-bold text-amber-700">12%</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-2">
+              <div id="metricLesionBar" class="bg-amber-500 h-2 rounded-full" style="width: 12%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Symptoms & Recommended Action -->
+        <div class="mt-4 space-y-3">
+          <div class="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3">
+            <h4 class="text-xs font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wider">
+              <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Identified Symptoms
+            </h4>
+            <p id="resSymptoms" class="text-xs text-amber-800 mt-1 leading-relaxed">
+              No necrotic spots, chlorotic halo, or fungal pustules observed.
+            </p>
+          </div>
+
+          <div class="bg-agro-50/80 border border-agro-200/80 rounded-xl p-3">
+            <h4 class="text-xs font-bold text-agro-900 flex items-center gap-1.5 uppercase tracking-wider">
+              <i class="fa-solid fa-prescription-bottle-medical text-agro-700"></i> Treatment & Agronomic Advice
+            </h4>
+            <ul id="resTreatments" class="mt-1.5 space-y-1 text-xs text-agro-950 list-disc list-inside leading-relaxed">
+              <li>Continue regular fertilization schedule.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Smart Soil Moisture Detection -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 transition-all hover:shadow-md">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-droplet text-blue-500"></i>
+            Smart Soil Moisture Detection
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Live IoT Sensor Telemetry & Probes</p>
+        </div>
+        <button id="refreshMoistureBtn" class="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 flex items-center gap-1 active:scale-95 transition-all">
+          <i class="fa-solid fa-arrows-rotate"></i> Sync
+        </button>
+      </div>
+
+      <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 my-2">
+        <div class="space-y-1">
+          <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Root Zone Level</span>
+          <div class="flex items-baseline gap-1">
+            <span id="moistureValueText" class="text-3xl font-extrabold text-slate-800">42%</span>
+            <span class="text-xs text-slate-400">VWC</span>
+          </div>
+          <p id="moistureStatusBadge" class="text-xs font-semibold text-emerald-600 flex items-center gap-1">
+            <i class="fa-solid fa-circle-check"></i> Optimal Moisture Range
+          </p>
+        </div>
+        <div class="w-20 h-20 relative flex items-center justify-center">
+          <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+            <path class="text-slate-200" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path id="moistureRing" class="text-blue-500 transition-all duration-700 ease-out" stroke-dasharray="42, 100" stroke-width="3.5" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <i class="fa-solid fa-water absolute text-blue-500 text-lg"></i>
+        </div>
+      </div>
+
+      <input id="moistureSlider" type="range" min="10" max="95" value="42" class="w-full accent-blue-600 cursor-pointer mt-2">
+      <div class="flex justify-between text-[11px] font-medium text-slate-400 mt-1">
+        <span>Wilting Point (15%)</span>
+        <span>Simulate Probe Reading</span>
+        <span>Saturation (85%)</span>
+      </div>
+    </section>
+
+    <!-- Live Mandi Rates -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 transition-all hover:shadow-md">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-emerald-600"></i>
+            Live Mandi Rates
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Agricultural Produce Market Committee (APMC)</p>
+        </div>
+        <span class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">Today</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3" id="mandiContainer">
+        <!-- Chilli -->
+        <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/60">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">Teja Chilli</span>
+            <span class="text-[10px] text-emerald-600 font-semibold bg-emerald-100 px-1.5 py-0.5 rounded">+2.4%</span>
+          </div>
+          <div class="mt-2 text-base font-black text-slate-900">₹22,300 <span class="text-[10px] font-normal text-slate-500">/ qtl</span></div>
+          <span class="text-[10px] text-slate-400">Guntur Mandi</span>
+        </div>
+        <!-- Cotton -->
+        <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/60">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">Cotton (Medium)</span>
+            <span class="text-[10px] text-rose-600 font-semibold bg-rose-100 px-1.5 py-0.5 rounded">-0.8%</span>
+          </div>
+          <div class="mt-2 text-base font-black text-slate-900">₹7,450 <span class="text-[10px] font-normal text-slate-500">/ qtl</span></div>
+          <span class="text-[10px] text-slate-400">Warangal Mandi</span>
+        </div>
+        <!-- Paddy -->
+        <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/60">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">Paddy (Basmati)</span>
+            <span class="text-[10px] text-emerald-600 font-semibold bg-emerald-100 px-1.5 py-0.5 rounded">+1.2%</span>
+          </div>
+          <div class="mt-2 text-base font-black text-slate-900">₹3,820 <span class="text-[10px] font-normal text-slate-500">/ qtl</span></div>
+          <span class="text-[10px] text-slate-400">Karnal Mandi</span>
+        </div>
+        <!-- Maize -->
+        <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/60">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">Hybrid Maize</span>
+            <span class="text-[10px] text-slate-600 font-semibold bg-slate-200 px-1.5 py-0.5 rounded">0.0%</span>
+          </div>
+          <div class="mt-2 text-base font-black text-slate-900">₹2,180 <span class="text-[10px] font-normal text-slate-500">/ qtl</span></div>
+          <span class="text-[10px] text-slate-400">Davangere Mandi</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="mt-10 text-center text-xs text-slate-400">
+    Smart AgroVision PWA &bull; Engineered for Offline Agricultural Resilience
+  </footer>
+
+  <script>
+    // State and Elements
+    const leafInput = document.getElementById('leafInput');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const fileSelectedBadge = document.getElementById('fileSelectedBadge');
+    const emptyUploadPrompt = document.getElementById('emptyUploadPrompt');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewImage = document.getElementById('previewImage');
+    const scanOverlay = document.getElementById('scanOverlay');
+    const diagnoseBtn = document.getElementById('diagnoseBtn');
+    const cvCanvas = document.getElementById('cvCanvas');
+    const resultsCard = document.getElementById('resultsCard');
+
+    // Result Nodes
+    const resDiseaseName = document.getElementById('resDiseaseName');
+    const resScientificName = document.getElementById('resScientificName');
+    const resConfidence = document.getElementById('resConfidence');
+    const resSeverity = document.getElementById('resSeverity');
+    const statusIndicatorDot = document.getElementById('statusIndicatorDot');
+    const metricGreenPct = document.getElementById('metricGreenPct');
+    const metricGreenBar = document.getElementById('metricGreenBar');
+    const metricLesionPct = document.getElementById('metricLesionPct');
+    const metricLesionBar = document.getElementById('metricLesionBar');
+    const resSymptoms = document.getElementById('resSymptoms');
+    const resTreatments = document.getElementById('resTreatments');
+
+    // Soil Moisture Nodes
+    const moistureSlider = document.getElementById('moistureSlider');
+    const moistureValueText = document.getElementById('moistureValueText');
+    const moistureStatusBadge = document.getElementById('moistureStatusBadge');
+    const moistureRing = document.getElementById('moistureRing');
+    const refreshMoistureBtn = document.getElementById('refreshMoistureBtn');
+
+    // Knowledge Base for Diagnoses
+    const DISEASE_PROFILES = {
+      HEALTHY: {
+        name: "Healthy Plant Foliage",
+        scientific: "Optimal Chlorophyll Index",
+        severity: "None",
+        severityBg: "bg-emerald-100 text-emerald-800",
+        dotColor: "bg-emerald-500",
+        symptoms: "Homogeneous green pigmentation across leaf tissue without necrotic spots, fungal pustules, or chlorotic halos.",
+        treatments: [
+          "Maintain standard irrigation cycle according to soil moisture sensor telemetry.",
+          "Continue balanced N-P-K nutrient application.",
+          "Keep checking leaf undersides periodically for sucking pest colonies."
+        ]
+      },
+      BLIGHT: {
+        name: "Early / Late Leaf Blight",
+        scientific: "Alternaria solani / Phytophthora infestans",
+        severity: "High",
+        severityBg: "bg-rose-100 text-rose-800",
+        dotColor: "bg-rose-500",
+        symptoms: "Dark brown to black necrotic lesions with concentric bullseye rings, progressive tissue necrosis and yellow margins.",
+        treatments: [
+          "Immediately prune and remove severely infected lower leaves away from the plot.",
+          "Organic: Spray Trichoderma harzianum or Bacillus subtilis (10g/L water).",
+          "Chemical: Foliar spray of Mancozeb 75% WP (2.5 g/L) or Copper Oxychloride 50% WP (3.0 g/L)."
+        ]
+      },
+      RUST: {
+        name: "Common Leaf Rust",
+        scientific: "Puccinia sorghi / Puccinia striiformis",
+        severity: "Moderate",
+        severityBg: "bg-amber-100 text-amber-900",
+        dotColor: "bg-amber-500",
+        symptoms: "Raised orange to reddish-brown powdery pustules on both upper and lower leaf surfaces, leading to premature leaf drying.",
+        treatments: [
+          "Foliar spray of Wettable Sulphur 80% WP (3 g/L water) early morning.",
+          "For severe infestations: Spray Propiconazole 25% EC (1 ml/L water) or Tebuconazole.",
+          "Avoid overhead sprinkler irrigation to keep the foliage canopy dry."
+        ]
+      },
+      BACTERIAL_SPOT: {
+        name: "Bacterial Leaf Spot",
+        scientific: "Xanthomonas campestris pv.",
+        severity: "Moderate-High",
+        severityBg: "bg-orange-100 text-orange-900",
+        dotColor: "bg-orange-500",
+        symptoms: "Small, water-soaked dark spots that enlarge with prominent yellow halos (chlorotic halos), causing leaf drop.",
+        treatments: [
+          "Spray Copper Hydroxide (2 g/L) combined with Streptocycline (1 g per 10 L water).",
+          "Sterilize pruning cutters between plants with 70% isopropyl alcohol.",
+          "Avoid field operations while foliage is wet with dew or rain."
+        ]
+      },
+      CHLOROSIS: {
+        name: "Leaf Chlorosis (Nutrient Deficiency)",
+        scientific: "Nitrogen / Iron / Micronutrient Stress",
+        severity: "Moderate",
+        severityBg: "bg-yellow-100 text-yellow-900",
+        dotColor: "bg-yellow-500",
+        symptoms: "Generalized yellowing of leaf blade, interveinal chlorosis with green veins remaining prominent.",
+        treatments: [
+          "Apply chelated Iron (Fe-EDTA 12%) @ 1.5g/L water as a foliar spray.",
+          "Check soil pH; alkalidiv class="p-3 rounded-xl border border-slate-100 bg-slate-50/60">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">Paddy (Basmati)</span>
+            <span class="text-[10px] text-emerald-600 font-semibold bg-emerald-100 px-1.5 py-0.5 rounded">+1.2%</span>
+          </div>
+          <div class="mt-2 text-base font-black text-slate-900">₹3,820 <span class="text-[10px] font-normal text-slate-500">/ qtl</span></div>
+          <span class="text-[10px] text-slate-400">Karnal Mandi</span>
+        </div>
+        <!-- Maize -->
+        <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/60">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">Hybrid Maize</span>
+            <span class="text-[10px] text-slate-600 font-semibold bg-slate-200 px-1.5 py-0.5 rounded">0.0%</span>
+          </div>
+          <div class="mt-2 text-base font-black text-slate-900">₹2,180 <span class="text-[10px] font-normal text-slate-500">/ qtl</span></div>
+
         function diagnoseCrop() {
             if (!cropInput.files.length) {
                 alert("Please select or capture a crop photo first.");
