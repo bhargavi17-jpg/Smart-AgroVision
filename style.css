@@ -1,0 +1,125 @@
+:root {
+  --primary-color: #2e7d32;
+  --primary-dark: #1b5e20;
+  --accent-color: #81c784;
+  --bg-color: #f4f6f8;
+  --card-bg: #ffffff;
+  --text-color: #263238;
+  --text-muted: #607d8b;
+  --border-color: #e0e0e0;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: white;
+  padding: 1.25rem 1rem;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.offline-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+main {
+  flex: 1;
+  padding: 1.25rem;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.card {
+  background: var(--card-bg);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-bottom: 1.25rem;
+}
+
+.card h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.card p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.file-upload-box {
+  border: 2px dashed var(--accent-color);
+  padding: 1.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 1rem 0;
+  display: block;
+  text-align: center;
+  background: #fafafa;
+}
+
+input[type="file"] {
+  display: none;
+}
+
+.preview-img {
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: 8px;
+  margin: 1rem auto;
+  display: none;
+  object-fit: cover;
+}
+
+button {
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: background-color 0.2s ease;
+}
+
+button:hover {
+  background-color: var(--primary-dark);
+}
+
+.result-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #e8f5e9;
+  border-left: 4px solid var(--primary-color);
+  border-radius: 4px;
+  display: none;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
