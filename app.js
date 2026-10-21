@@ -30,7 +30,7 @@ function updateNetworkStatus() {
       badge.style.background = 'rgba(255, 152, 0, 0.4)';
     }
   }
-}
+
 
 // Handle Image Selection & Preview
 if (cropInput) {
