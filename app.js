@@ -48,32 +48,32 @@ if (cropInput) {
   });
 }
     // Fetch weather data and estimate soil moisture & condition
+// Fetch weather data, predict soil moisture & calculate irrigation recommendation
 async function refreshSensorData() {
   const moistureVal = document.getElementById('moistureVal');
   const moistureStatus = document.getElementById('moistureStatus');
 
   if (moistureVal) moistureVal.innerText = '--%';
-  if (moistureStatus) moistureStatus.innerText = 'Fetching live weather data...';
+  if (moistureStatus) moistureStatus.innerText = 'Analyzing weather & soil telemetry...';
 
   // Default coordinates (Vijayawada / AP)
   let lat = 16.5062;
   let lon = 80.6480;
 
-  // Attempt to get device GPS coordinates
   if (navigator.geolocation) {
     try {
       const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000 });
       });
       lat = position.coords.latitude;
       lon = position.coords.longitude;
     } catch (e) {
-      console.warn('Geolocation unavailable or denied, using default coordinates.', e);
+      console.warn('Geolocation fallback used:', e);
     }
   }
 
   try {
-    // Open-Meteo API (Free, no API key required)
+    // Open-Meteo Weather API
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,rain,soil_moisture_0_to_1cm`;
     const response = await fetch(url);
     const data = await response.json();
@@ -86,37 +86,46 @@ async function refreshSensorData() {
 
       let estimatedMoisture = 0;
 
-      // If direct soil moisture metric is returned by the satellite model (m³/m³)
       if (directSoilMoisture !== undefined && directSoilMoisture !== null) {
         estimatedMoisture = Math.round(directSoilMoisture * 100);
       } else {
-        // Fallback formula: relative humidity adjusted for rainfall
         estimatedMoisture = Math.min(100, Math.round((humidity * 0.6) + (rain > 0 ? 30 : 5)));
       }
 
-      // Update UI elements
       if (moistureVal) moistureVal.innerText = `${estimatedMoisture}%`;
 
-      let statusText = 'Optimal Soil Moisture';
-      let statusColor = '#1b5e20'; // Green
+      // నీటి పరిమాణం (Water requirement) & నోటిఫికేషన్ వివరాలు
+      let statusText = '';
+      let waterAdvice = '';
+      let statusColor = '#1b5e20';
 
       if (estimatedMoisture < 35) {
-        statusText = 'Dry — Irrigation Recommended';
-        statusColor = '#d32f2f'; // Red
-      } else if (estimatedMoisture > 75) {
-        statusText = 'High Moisture / Saturated Ground';
-        statusColor = '#0288d1'; // Blue
+        const waterNeeded = Math.round((45 - estimatedMoisture) * 1.5); // Litres per sq. meter estimate
+        statusText = 'Dry — Immediate Irrigation Needed!';
+        waterAdvice = `⚠️ నీటి అవసరం: దాదాపు ${waterNeeded}L/m² (లేదా తక్షణమే తడి అందించండి)`;
+        statusColor = '#d32f2f';
+      } else if (estimatedMoisture >= 35 && estimatedMoisture <= 70) {
+        statusText = 'Optimal Soil Moisture';
+        waterAdvice = '💧 తగినంత తేమ ఉంది. ప్రస్తుతం నీరు పెట్టనవసరం లేదు.';
+        statusColor = '#1b5e20';
+      } else {
+        statusText = 'Excess Moisture / Wet Soil';
+        waterAdvice = '🛑 అధిక తేమ: నీటి పారుదలను నిలిపివేయండి.';
+        statusColor = '#0288d1';
       }
 
+      // Display Status & Water Requirement Notification
       if (moistureStatus) {
-        moistureStatus.innerText = `Status: ${statusText}`;
+        moistureStatus.innerHTML = `<strong>Status:</strong> ${statusText}<br><span style="display:inline-block; margin-top:6px; font-size:0.9em; background:#eef2f6; padding:6px 10px; border-radius:6px; color:#111;">${waterAdvice}</span>`;
         moistureStatus.style.color = statusColor;
       }
     }
   } catch (error) {
-    console.error('Weather API fetch failed:', error);
-    if (moistureVal) moistureVal.innerText = '48%';
-    if (moistureStatus) moistureStatus.innerText = 'Status: Optimal (Offline Fallback)';
+    console.error('Weather error:', error);
+    if (moistureVal) moistureVal.innerText = '45%';
+    if (moistureStatus) {
+      moistureStatus.innerHTML = `<strong>Status:</strong> Optimal (Offline Fallback)<br><span style="font-size:0.85em;">💧 సగటు తేమ ఉంది.</span>`;
+    }
   }
 }
 
