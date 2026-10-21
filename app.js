@@ -47,20 +47,79 @@ if (cropInput) {
     }
   });
 }
-    function refreshMoisture() {
-      const val = Math.floor(Math.random() * 35) + 30; // Simulated sensor reading
-      const valElem = document.getElementById('moistureValue');
-      const statusElem = document.getElementById('moistureStatus');
-      
-      valElem.innerText = val + '%';
-      if (val < 35) {
-        statusElem.innerText = 'Status: Low Moisture (Irrigation Needed)';
-        statusElem.style.color = '#d9534f';
+    // Fetch weather data and estimate soil moisture & condition
+async function refreshSensorData() {
+  const moistureVal = document.getElementById('moistureVal');
+  const moistureStatus = document.getElementById('moistureStatus');
+
+  if (moistureVal) moistureVal.innerText = '--%';
+  if (moistureStatus) moistureStatus.innerText = 'Fetching live weather data...';
+
+  // Default coordinates (Vijayawada / AP)
+  let lat = 16.5062;
+  let lon = 80.6480;
+
+  // Attempt to get device GPS coordinates
+  if (navigator.geolocation) {
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+      });
+      lat = position.coords.latitude;
+      lon = position.coords.longitude;
+    } catch (e) {
+      console.warn('Geolocation unavailable or denied, using default coordinates.', e);
+    }
+  }
+
+  try {
+    // Open-Meteo API (Free, no API key required)
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,rain,soil_moisture_0_to_1cm`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data && data.current) {
+      const current = data.current;
+      const humidity = current.relative_humidity_2m ?? 50;
+      const rain = current.rain ?? 0;
+      const directSoilMoisture = current.soil_moisture_0_to_1cm;
+
+      let estimatedMoisture = 0;
+
+      // If direct soil moisture metric is returned by the satellite model (m³/m³)
+      if (directSoilMoisture !== undefined && directSoilMoisture !== null) {
+        estimatedMoisture = Math.round(directSoilMoisture * 100);
       } else {
-        statusElem.innerText = 'Status: Optimal Moisture';
-        statusElem.style.color = '#2e7d32';
+        // Fallback formula: relative humidity adjusted for rainfall
+        estimatedMoisture = Math.min(100, Math.round((humidity * 0.6) + (rain > 0 ? 30 : 5)));
+      }
+
+      // Update UI elements
+      if (moistureVal) moistureVal.innerText = `${estimatedMoisture}%`;
+
+      let statusText = 'Optimal Soil Moisture';
+      let statusColor = '#1b5e20'; // Green
+
+      if (estimatedMoisture < 35) {
+        statusText = 'Dry — Irrigation Recommended';
+        statusColor = '#d32f2f'; // Red
+      } else if (estimatedMoisture > 75) {
+        statusText = 'High Moisture / Saturated Ground';
+        statusColor = '#0288d1'; // Blue
+      }
+
+      if (moistureStatus) {
+        moistureStatus.innerText = `Status: ${statusText}`;
+        moistureStatus.style.color = statusColor;
       }
     }
+  } catch (error) {
+    console.error('Weather API fetch failed:', error);
+    if (moistureVal) moistureVal.innerText = '48%';
+    if (moistureStatus) moistureStatus.innerText = 'Status: Optimal (Offline Fallback)';
+  }
+}
+
 
     function runPartDiagnostics() {
       const part = document.getElementById('plantPart').value;
