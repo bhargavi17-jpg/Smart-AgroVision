@@ -47,6 +47,31 @@ if (cropInput) {
     }
   });
 }
+    function refreshMoisture() {
+      const val = Math.floor(Math.random() * 35) + 30; // Simulated sensor reading
+      const valElem = document.getElementById('moistureValue');
+      const statusElem = document.getElementById('moistureStatus');
+      
+      valElem.innerText = val + '%';
+      if (val < 35) {
+        statusElem.innerText = 'Status: Low Moisture (Irrigation Needed)';
+        statusElem.style.color = '#d9534f';
+      } else {
+        statusElem.innerText = 'Status: Optimal Moisture';
+        statusElem.style.color = '#2e7d32';
+      }
+    }
+
+    function runPartDiagnostics() {
+      const part = document.getElementById('plantPart').value;
+      const resultBox = document.getElementById('partResultBox');
+      const status = document.getElementById('partDiseaseStatus');
+      const advice = document.getElementById('partActionAdvice');
+
+      resultBox.style.display = 'block';
+      status.innerText = `Healthy ${part.charAt(0).toUpperCase() + part.slice(1)}`;
+      advice.innerText = `No pathogen or fungal rot detected on the ${part}.`;
+    }
 
 // Diagnostic Engine (Offline Rule-Based Evaluation)
 const sampleDiagnoses = [
