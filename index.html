@@ -158,7 +158,71 @@
             </div>
         </div>
     </main>
+    <!-- Soil Moisture Detection Card -->
+    <div class="card">
+      <h2>Smart Soil Moisture Detection</h2>
+      <p style="color: #666; font-size: 0.9rem; margin-top: 0.4rem;">Live IoT Sensor Telemetry</p>
+      
+      <div style="margin: 1.5rem 0; padding: 1.2rem; background: #f0f7f4; border-radius: 8px;">
+        <span style="font-size: 2.2rem; font-weight: 700; color: var(--primary);" id="moistureValue">42%</span>
+        <div style="margin-top: 0.5rem; font-weight: 600;" id="moistureStatus">Status: Optimal Moisture</div>
+      </div>
+      <button type="button" onclick="refreshMoisture()">Refresh Sensor Data</button>
+    </div>
 
+    <!-- Multi-Part Crop Health Diagnosis Card -->
+    <div class="card">
+      <h2>Plant Part Health Diagnosis</h2>
+      <p style="color: #666; font-size: 0.9rem; margin-top: 0.4rem;">Select the affected plant part to analyze</p>
+      
+      <div style="margin: 1rem 0; text-align: left;">
+        <label for="plantPart" style="font-weight: 600; font-size: 0.9rem;">Target Part:</label>
+        <select id="plantPart" style="width: 100%; padding: 0.6rem; margin-top: 0.4rem; border-radius: 6px; border: 1px solid #ccc;">
+          <option value="leaves">Leaves (Folio)</option>
+          <option value="branches">Stem & Branches</option>
+          <option value="fruit">Fruit / Flower</option>
+          <option value="root">Root System</option>
+          <option value="soil">Soil Condition</option>
+        </select>
+      </div>
+
+      <label class="file-upload-box" for="cropInputPart">
+        <span id="uploadTextPart">Tap to capture or upload image</span>
+        <input type="file" id="cropInputPart" accept="image/*">
+      </label>
+
+      <button type="button" onclick="runPartDiagnostics()">Diagnose Part Health</button>
+
+      <div id="partResultBox" class="result-panel">
+        <strong>Diagnosis: </strong><span id="partDiseaseStatus">Ready</span><br>
+        <strong>Recommendation: </strong><span id="partActionAdvice">Upload an image to scan.</span>
+      </div>
+    </div>
+
+    <!-- Live Market Rates Card -->
+    <div class="card">
+      <h2>Recent Mandi / Market Rates</h2>
+      <p style="color: #666; font-size: 0.9rem; margin-top: 0.4rem;">Estimated local AP market prices (per Quintal)</p>
+      
+      <div style="margin-top: 1rem; text-align: left;">
+        <div style="display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid #eee;">
+          <span><strong>Paddy (Common):</strong></span>
+          <span style="color: var(--primary); font-weight: 600;">₹2,300 / qtl</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid #eee;">
+          <span><strong>Chilli (Teja):</strong></span>
+          <span style="color: var(--primary); font-weight: 600;">₹18,500 / qtl</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid #eee;">
+          <span><strong>Cotton (Medium):</strong></span>
+          <span style="color: var(--primary); font-weight: 600;">₹7,120 / qtl</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 0.6rem 0;">
+          <span><strong>Maize:</strong></span>
+          <span style="color: var(--primary); font-weight: 600;">₹2,225 / qtl</span>
+        </div>
+      </div>
+    </div>
     <script>
         const cropInput = document.getElementById('cropInput');
         const imagePreview = document.getElementById('imagePreview');
@@ -177,7 +241,7 @@
                 reader.readAsDataURL(file);
             }
         });
-
+        
         function diagnoseCrop() {
             if (!cropInput.files.length) {
                 alert("Please select or capture a crop photo first.");
